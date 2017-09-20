@@ -1,4 +1,5 @@
-FROM alpine:3.6
+#FROM alpine:3.6
+FROM hypriot/rpi-alpine
 MAINTAINER James Phillips <james@hashicorp.com> (@slackpad)
 
 # This is the release of Consul to pull in.
@@ -8,8 +9,14 @@ ENV CONSUL_VERSION=0.9.3
 # to provide HashiCorp-built versions of basic utilities like dumb-init and gosu.
 ENV DOCKER_BASE_VERSION=0.0.4
 
+# Consul Architecture
+ENV CONSUL_ARCH=linux_arm
+
 # This is the location of the releases.
 ENV HASHICORP_RELEASES=https://releases.hashicorp.com
+
+# Set the PATH env variable
+ENV PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # Create a consul user and group first so the IDs get set the same way, even as
 # the rest of this may change over time.
@@ -21,23 +28,20 @@ RUN apk add --no-cache ca-certificates curl gnupg libcap openssl && \
     gpg --keyserver pgp.mit.edu --recv-keys 91A6E7F85D05C65630BEF18951852D87348FFC4C && \
     mkdir -p /tmp/build && \
     cd /tmp/build && \
-    wget ${HASHICORP_RELEASES}/docker-base/${DOCKER_BASE_VERSION}/docker-base_${DOCKER_BASE_VERSION}_linux_amd64.zip && \
-    wget ${HASHICORP_RELEASES}/docker-base/${DOCKER_BASE_VERSION}/docker-base_${DOCKER_BASE_VERSION}_SHA256SUMS && \
-    wget ${HASHICORP_RELEASES}/docker-base/${DOCKER_BASE_VERSION}/docker-base_${DOCKER_BASE_VERSION}_SHA256SUMS.sig && \
-    gpg --batch --verify docker-base_${DOCKER_BASE_VERSION}_SHA256SUMS.sig docker-base_${DOCKER_BASE_VERSION}_SHA256SUMS && \
-    grep ${DOCKER_BASE_VERSION}_linux_amd64.zip docker-base_${DOCKER_BASE_VERSION}_SHA256SUMS | sha256sum -c && \
-    unzip docker-base_${DOCKER_BASE_VERSION}_linux_amd64.zip && \
-    cp bin/gosu bin/dumb-init /bin && \
-    wget ${HASHICORP_RELEASES}/consul/${CONSUL_VERSION}/consul_${CONSUL_VERSION}_linux_amd64.zip && \
+    wget ${HASHICORP_RELEASES}/consul/${CONSUL_VERSION}/consul_${CONSUL_VERSION}_${CONSUL_ARCH}.zip && \
     wget ${HASHICORP_RELEASES}/consul/${CONSUL_VERSION}/consul_${CONSUL_VERSION}_SHA256SUMS && \
     wget ${HASHICORP_RELEASES}/consul/${CONSUL_VERSION}/consul_${CONSUL_VERSION}_SHA256SUMS.sig && \
     gpg --batch --verify consul_${CONSUL_VERSION}_SHA256SUMS.sig consul_${CONSUL_VERSION}_SHA256SUMS && \
-    grep consul_${CONSUL_VERSION}_linux_amd64.zip consul_${CONSUL_VERSION}_SHA256SUMS | sha256sum -c && \
-    unzip -d /bin consul_${CONSUL_VERSION}_linux_amd64.zip && \
+    grep consul_${CONSUL_VERSION}_${CONSUL_ARCH}.zip consul_${CONSUL_VERSION}_SHA256SUMS | sha256sum -c && \
+    unzip -d /bin consul_${CONSUL_VERSION}_${CONSUL_ARCH}.zip && \
     cd /tmp && \
     rm -rf /tmp/build && \
     apk del gnupg openssl && \
     rm -rf /root/.gnupg
+
+# Add in locally built gosu and dumb-init
+ADD gosu /bin
+ADD dumb-init /bin
 
 # The /consul/data dir is used by Consul to store state. The agent will be started
 # with /consul/config as the configuration directory so you can add additional
